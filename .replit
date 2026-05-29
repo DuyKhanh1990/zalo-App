@@ -37,4 +37,4 @@ externalPort = 3000
 [userenv]
 
 [userenv.shared]
-VITE_API_BASE_URL = "https://easyeduv2.easyedu.vn"
+VITE_API_BASE_URL = "https://easyeduzalo.easyedu.vn"
