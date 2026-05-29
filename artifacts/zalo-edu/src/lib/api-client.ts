@@ -1,4 +1,6 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+// eslint-disable-next-line no-console
+console.log("[api-client] API_BASE_URL =", API_BASE || "(empty — will use relative paths)");
 const TOKEN_KEY = "crm_auth_token";
 
 export function getToken(): string | null {

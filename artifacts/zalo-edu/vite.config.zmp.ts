@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -50,7 +50,23 @@ function zmpHtmlClean(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Load .env, .env.production, etc. so VITE_* vars are available at build time.
+  const env = loadEnv(mode, path.resolve(import.meta.dirname), "VITE_");
+  const apiBaseUrl = env.VITE_API_BASE_URL ?? "";
+
+  // Warn loudly during build if the URL is not set — catches CI/CD misconfig early.
+  if (!apiBaseUrl) {
+    console.warn(
+      "[vite.config.zmp] WARNING: VITE_API_BASE_URL is not set. " +
+      "API calls will use relative paths and will NOT reach the production backend. " +
+      "Create .env.production with VITE_API_BASE_URL=https://easyeduv2.easyedu.vn",
+    );
+  } else {
+    console.log("[vite.config.zmp] VITE_API_BASE_URL =", apiBaseUrl);
+  }
+
+  return {
   base: "./",
   plugins: [react(), tailwindcss(), zmpHtmlClean()],
   resolve: {
@@ -67,6 +83,11 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   define: {
+    // Explicitly bake VITE_API_BASE_URL into the IIFE bundle.
+    // The ZMP WebView build uses es2015/IIFE format which means standard
+    // Vite env injection via import.meta.env may not survive all transforms.
+    // Defining it here guarantees the value is statically replaced at build time.
+    "import.meta.env.VITE_API_BASE_URL": JSON.stringify(apiBaseUrl),
     // Ensure any stray import.meta.url in third-party deps becomes an empty
     // string instead of breaking the IIFE build.
     "import.meta.url": JSON.stringify(""),
@@ -95,4 +116,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });
