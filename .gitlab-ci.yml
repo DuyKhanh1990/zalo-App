@@ -1,0 +1,26 @@
+image: docker:27-cli
+
+stages: [build_images]
+
+variables:
+  DOCKER_BUILDKIT: "1"
+  DOCKER_REGISTRY: harbor.emso.vn
+  REGISTRY_PROJECT: emso-common
+  REGISTRY_IMAGE: zaloeasyedu
+  DOCKER_IMAGE: $DOCKER_REGISTRY/$REGISTRY_PROJECT/$REGISTRY_IMAGE
+  REGISTRY_TAG: "0.0.4"
+
+emso-build-image:
+  stage: build_images
+  tags: [emso-runner]
+  script:
+    - echo "Login to Docker Registry"
+    - echo "$HARBOR_ROBOT_TOKEN" | docker login -u "$HARBOR_ROBOT_USER" -p "$HARBOR_ROBOT_TOKEN" "$DOCKER_REGISTRY"
+    - docker build -t "$DOCKER_IMAGE:$REGISTRY_TAG" .
+    - docker push "$DOCKER_IMAGE:$REGISTRY_TAG"
+    - echo "Build xong roi !"
+  after_script:
+    - docker image prune -af
+    - docker builder prune -af
+    - docker logout "$DOCKER_REGISTRY"
+    - echo "Build xong roi !"

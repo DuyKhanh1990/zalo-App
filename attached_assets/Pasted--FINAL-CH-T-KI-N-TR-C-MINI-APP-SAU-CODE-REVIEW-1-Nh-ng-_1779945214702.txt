@@ -1,0 +1,89 @@
+🚀 FINAL CHỐT KIẾN TRÚC MINI APP (SAU CODE REVIEW)
+🧠 1. Những gì đã đúng 100% — KHÔNG ĐƯỢC ĐỔI
+✔ Auth flow
+getAccessToken() → GIỮ NGUYÊN
+/api/mobile/auth/zalo → GIỮ NGUYÊN
+payload:
+{ "accessToken": "xxx" }
+
+👉 chỉ mở rộng thêm field optional, không breaking change
+
+✔ Auto login flow
+useAuthState
+loginWithZalo
+
+👉 giữ nguyên logic hiện tại
+
+⚠️ 2. GAP DUY NHẤT CỦA MINI APP (CONFIRMED)
+❌ CHƯA HANDLE:
+👉 center từ deep link
+
+Hiện tại:
+
+?path=/calendar?center=crma.easyedu.vn
+
+👉 bị ignore hoàn toàn
+
+✔ FIX REQUIRED (RẤT NHỎ)
+Step 1: parse center
+const center = new URLSearchParams(window.location.search).get("center");
+Step 2: attach vào auth request
+await apiPost("/api/mobile/auth/zalo", {
+  accessToken,
+  ...(center ? { center } : {})
+});
+🧠 3. ONBOARDING STATE — ĐIỂM DUY NHẤT CẦN CHỐT VỚI BACKEND
+❗ Đây là unresolved contract giữa 2 team
+
+Hiện tại backend nói:
+
+“nếu chưa có center → onboarding”
+
+👉 nhưng Mini App chưa biết:
+
+render UI gì
+redirect hay modal
+response format nào
+🚨 4. CHỐT CONTRACT CẦN BACKEND CONFIRM
+✔ OPTION KHÁCH QUAN NHẤT (khuyến nghị production)
+Backend response:
+{
+  "success": true,
+  "data": {
+    "token": "...",
+    "center": "crma.easyedu.vn"
+  },
+  "needsOnboarding": false
+}
+❌ Case chưa có center:
+{
+  "success": true,
+  "needsOnboarding": true
+}
+🧠 5. MINI APP HANDLING RULE
+if (needsOnboarding):
+    show Center Selection UI
+else:
+    proceed normal flow
+⚡ 6. FINAL SUMMARY (CHỐT GỬI TEAM)
+📱 Mini App:
+giữ getAccessToken() (KHÔNG đổi)
+giữ /api/mobile/auth/zalo (KHÔNG đổi)
+ADD: parse center từ deep link
+ADD: send center optional vào payload
+ADD: handle needsOnboarding
+🧠 Backend:
+resolve tenant từ:
+center (deep link)
+MASTER DB (zaloUserId)
+return onboarding flag nếu chưa có mapping
+🚀 7. ONE-LINE FINAL AGREEMENT
+
+👉 “Mini App chỉ bổ sung parse center + optional gửi lên auth request + handle onboarding flag, toàn bộ auth flow và endpoint giữ nguyên như hiện tại.”
+
+🔥 Đánh giá kiến trúc sau review này
+
+✔ Auth layer: OK production
+✔ Tenant routing: OK (backend)
+✔ CRM integration: OK
+⚠ Only missing: deep link parsing + onboarding contract

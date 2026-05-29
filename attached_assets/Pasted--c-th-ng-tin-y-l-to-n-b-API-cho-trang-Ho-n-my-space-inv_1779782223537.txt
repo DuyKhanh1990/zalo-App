@@ -1,0 +1,99 @@
+Đã có đủ thông tin. Đây là toàn bộ API cho trang Hoá đơn (/my-space/invoices) của Student/Phụ huynh:
+
+📋 API Hoá đơn — Student / Phụ huynh
+Base URL: https://<domain>
+Auth: Cookie session — tất cả endpoint đều yêu cầu đăng nhập
+Lưu ý: Nếu tài khoản là Phụ huynh, API tự động trả về hoá đơn của tất cả học viên con liên kết. Field studentName để phân biệt từng con.
+
+Chỉ có 1 API duy nhất cho Student/Phụ huynh
+1. Lấy danh sách hoá đơn
+GET /api/my-space/invoices
+
+Không có query param — trả về toàn bộ hoá đơn, sắp xếp từ mới nhất đến cũ nhất.
+
+⚠️ Kiểm tra quyền: Không phải tất cả học viên đều có quyền xem hoá đơn. Quyền được cấu hình theo loại học viên trong hệ thống. Nếu không có quyền, API trả về 403.
+
+Response:
+
+{
+  "invoices": [
+    {
+      "id": "uuid",
+      "invoiceId": "uuid",
+      "title": "Học phí Toán nâng cao A1",
+      "code": "HD-2025-001",
+      "label": "Đợt 1",
+      "studentName": "Nguyen Van A",
+      "type": "Học phí",
+      "category": "Học phí lớp",
+      "amount": "2500000",
+      "status": "unpaid" | "paid" | "partial" | "overdue",
+      "dueDate": "2025-06-15",
+      "paidAt": "2025-06-10T08:00:00Z",
+      "createdAt": "2025-05-30T10:00:00Z",
+      "isSchedule": true
+    }
+  ]
+}
+
+Giải thích chi tiết các field:
+
+Field	Kiểu	Mô tả
+id	string	UUID của item (có thể là UUID của đợt thanh toán hoặc UUID hoá đơn)
+invoiceId	string	UUID của hoá đơn gốc
+title	string	Tiêu đề hiển thị (mô tả hoá đơn → tên lớp → mã lớp → "Hoá đơn")
+code	string	Mã hoá đơn/đợt thanh toán
+label	string|null	Nhãn đợt thanh toán, vd: "Đợt 1", "Đợt 2". null nếu thanh toán một lần
+studentName	string	Tên học viên (hữu ích cho tài khoản Phụ huynh nhiều con)
+type	string	Loại hoá đơn, vd: "Học phí"
+category	string|null	Danh mục, vd: "Học phí lớp", "Phí tài liệu"
+amount	string	Số tiền (dạng string số, đơn vị VNĐ)
+status	string	Trạng thái: unpaid / paid / partial / overdue
+dueDate	string|null	Hạn thanh toán (YYYY-MM-DD)
+paidAt	string|null	Thời điểm đã thanh toán (ISO timestamp). null nếu chưa thanh toán
+createdAt	string	ISO timestamp tạo hoá đơn
+isSchedule	boolean	true = item này là một đợt trong lịch thanh toán nhiều kỳ; false = hoá đơn thanh toán một lần
+Phân biệt 2 loại item trong response
+Hệ thống hỗ trợ 2 dạng hoá đơn:
+
+1. Hoá đơn thanh toán một lần (isSchedule: false):
+
+{
+  "id": "uuid-invoice",
+  "invoiceId": "uuid-invoice",
+  "label": null,
+  "amount": "5000000",
+  "status": "unpaid",
+  "paidAt": null,
+  "isSchedule": false
+}
+
+2. Hoá đơn chia đợt (isSchedule: true) — mỗi đợt là một item riêng:
+
+{
+  "id": "uuid-schedule-dot1",
+  "invoiceId": "uuid-invoice-goc",
+  "label": "Đợt 1",
+  "amount": "2500000",
+  "status": "paid",
+  "paidAt": "2025-06-10T08:00:00Z",
+  "isSchedule": true
+}
+
+Nhiều item có thể cùng invoiceId — đó là các đợt của cùng một hoá đơn gốc.
+
+Luồng hiển thị gợi ý cho mobile
+1. GET /api/my-space/invoices
+   → Nhóm theo studentName (cho Phụ huynh)
+   → Lọc theo status (unpaid/paid/overdue)
+   → Hiển thị badge số tiền còn lại
+   → Nếu isSchedule = true, nhóm các item cùng invoiceId thành 1 nhóm "Thanh toán theo đợt"
+
+Lỗi
+HTTP Code	Ý nghĩa
+401	Chưa đăng nhập
+403	Học viên không có quyền xem hoá đơn (do cấu hình hệ thống)
+500	Lỗi server
+Nếu học viên không có hoá đơn nào, API trả về { "invoices": [] } thay vì lỗi.
+
+Trang /my-space/invoices chỉ có 1 API duy nhất. Toàn bộ thông tin cần thiết để hiển thị danh sách hoá đơn, trạng thái thanh toán và lịch đóng theo đợt đều nằm trong response đó.

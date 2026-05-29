@@ -1,0 +1,119 @@
+Dưới đây là bản CHỐT KIẾN TRÚC FINAL để bạn gửi thẳng cho team Mini App. Mình viết theo kiểu “spec thống nhất”, không còn tranh luận nữa.
+
+🚀 CHỐT KIẾN TRÚC MINI APP + CRM (FINAL AGREEMENT)
+1. Tổng quan hệ thống
+1 Zalo Mini App dùng chung cho tất cả trung tâm
+Mỗi trung tâm = 1 CRM riêng + 1 database riêng
+Backend Mini App chịu trách nhiệm resolve tenant và routing
+Không có gateway trung gian, không event sync giữa CRM
+🧠 2. Tenant definition (QUAN TRỌNG NHẤT)
+👉 Tenant được định danh bằng:
+CRM Base URL
+
+Ví dụ:
+
+crma.easyedu.vn
+crm-b.easyedu.vn
+crm-abc.easyedu.vn
+
+✔ Đây là duy nhất identifier của tenant trong toàn hệ thống
+
+📱 3. Flow Zalo Mini App (CHUẨN)
+🟢 Lần đầu user vào Mini App
+Input:
+zaloUserId
+center (optional, từ OA deep link)
+Flow:
+Zalo Mini App mở
+        ↓
+Backend nhận:
+  - zaloUserId
+  - center = crma.easyedu.vn (nếu có)
+        ↓
+Nếu chưa có mapping:
+  MASTER_DB.save(
+     zaloUserId → center
+  )
+        ↓
+Call CRM:
+  https://crma.easyedu.vn/api/internal/zalo-auth
+        ↓
+CRM trả JWT
+🟢 4. Lần sau user vào
+zaloUserId → MASTER DB lookup → center URL
+        ↓
+call thẳng CRM tương ứng
+🧩 5. MASTER DATABASE (CHỈ CẦN 1 BẢNG)
+zalo_user_mapping
+-------------------------
+zalo_user_id   STRING
+center_url      STRING   (CRM base URL)
+created_at      TIMESTAMP
+
+✔ Không cần tenant_id riêng
+✔ Không cần gateway
+✔ Không cần CRM sync mapping
+
+🔗 6. CRM requirement (CHỈ 1 THAY ĐỔI NHỎ)
+OAChannel.ts update:
+
+Thêm center vào deep link:
+
+function buildMiniAppLink(path, query, center) {
+  const fullQuery = {
+    ...query,
+    center: center   // CRM base URL
+  }
+
+  const queryStr = "?" + new URLSearchParams(fullQuery).toString()
+  const fullPath = encodeURIComponent(path + queryStr)
+
+  return `https://zalo.me/s/${ZALO_MINI_APP_ID}?path=${fullPath}`
+}
+Ví dụ link:
+https://zalo.me/s/xxxxx?path=/calendar?center=crma.easyedu.vn
+⚙️ 7. API CRM giữ nguyên
+Không thay đổi:
+POST /api/internal/zalo-auth
+
+Flow CRM:
+
+receive zaloAccessToken
+get zaloUserId
+map → student_id
+return JWT
+
+✔ Mini App gọi sau khi resolve tenant
+
+⚠️ 8. RULES BẮT BUỘC
+❌ KHÔNG LÀM:
+Không CRM → notify gateway
+Không sync event giữa CRM và Mini App
+Không mapping tenant ngoài MASTER DB
+Không dùng UUID làm tenant key
+✅ CHỈ LÀM:
+CRM chỉ add center=crm_url
+Mini App resolve tenant từ MASTER DB
+Backend quyết định routing CRM
+🔥 9. FINAL ARCHITECTURE
+           Zalo Mini App
+                  ↓
+      (zaloUserId + center optional)
+                  ↓
+        Mini App Backend
+        (Tenant Resolver)
+                  ↓
+        MASTER DATABASE
+     (zaloUserId → crm_url)
+                  ↓
+         CRM (per center)
+      /api/internal/zalo-auth
+                  ↓
+               JWT
+🚀 10. KẾT LUẬN CHỐT
+
+✔ 1 Mini App dùng chung
+✔ CRM độc lập hoàn toàn
+✔ MASTER DB là source of truth duy nhất
+✔ tenant = CRM base URL
+✔ không gateway, không event sync

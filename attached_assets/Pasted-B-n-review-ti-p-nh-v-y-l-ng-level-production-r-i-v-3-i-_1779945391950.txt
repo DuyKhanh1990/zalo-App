@@ -1,0 +1,105 @@
+Bạn review tiếp như vậy là đúng level production rồi — và 3 điểm bạn raise đều chuẩn vấn đề thực tế khi chạy Zalo Mini App, không còn là “design paper” nữa.
+
+Mình chốt lại + chuẩn hoá thành FINAL SPEC UPDATE (v1.1) để bạn gửi lại 2 team luôn.
+
+🚀 FINAL SPEC UPDATE (v1.1) — SAU CODE REVIEW REALITY CHECK
+🧠 1. Deep link parsing trong Zalo Mini App
+✔ Kết luận sau khi phân tích:
+
+window.location.search CÓ THỂ hoạt động, nhưng KHÔNG được coi là guaranteed API trong Zalo Mini App runtime.
+
+✔ CHỐT IMPLEMENTATION (SAFE MODE)
+Priority 1 (primary):
+const center = new URLSearchParams(window.location.search).get("center");
+Priority 2 (fallback nếu SDK hỗ trợ):
+const center = ZMP.getAppInfo?.()?.center;
+
+hoặc:
+
+const center = ZMP.getLaunchContext?.();
+⚠️ RULE CHỐT:
+
+Không phụ thuộc 1 nguồn duy nhất để lấy center
+
+🧠 2. CENTER PERSISTENCE — BẮT BUỘC THÊM
+✔ Đây là missing piece quan trọng nhất trong runtime
+🔥 FINAL FLOW:
+🟢 Step 1 — First load
+read center from URL
+🟢 Step 2 — persist session
+if (center) {
+  sessionStorage.setItem("center", center);
+}
+🟢 Step 3 — always resolve from session
+const center =
+  new URLSearchParams(window.location.search).get("center")
+  || sessionStorage.getItem("center");
+✔ RESULT:
+reload app → vẫn giữ tenant
+navigation → không mất context
+Zalo WebView refresh → vẫn stable
+🧠 3. ONBOARDING CONTRACT — CẦN CHỐT BACKEND
+❗ Bạn raise đúng vấn đề “2 loại user”
+🔥 CHỐT 2 CASE RÕ RÀNG:
+🟢 CASE A — existing user, chưa bind center
+{
+  "success": true,
+  "token": "xxx",
+  "needsOnboarding": true
+}
+
+👉 user đã tồn tại nhưng thiếu tenant
+
+🟡 CASE B — completely new user
+{
+  "success": true,
+  "needsOnboarding": true,
+  "token": null
+}
+
+👉 chưa có account CRM mapping
+
+✔ UI RULE:
+if (!token && needsOnboarding) → full onboarding
+if (token && needsOnboarding) → select center
+🧠 4. FINAL ARCHITECTURE UPDATE
+Zalo Mini App
+    ↓
+getAccessToken()
+    ↓
+resolve center:
+   - URL
+   - sessionStorage
+    ↓
+POST /api/mobile/auth/zalo
+    ↓
+Backend:
+   - verify token
+   - lookup MASTER DB
+   - resolve tenant
+    ↓
+return:
+   token + needsOnboarding
+⚠️ 5. 3 THINGS BẠN ĐÃ IDENTIFY ĐÚNG (RẤT QUAN TRỌNG)
+✔ 1. Zalo WebView routing không stable → đúng
+
+→ phải fallback nhiều nguồn
+
+✔ 2. sessionStorage là bắt buộc → đúng
+
+→ nếu không sẽ mất tenant khi reload
+
+✔ 3. onboarding contract chưa rõ → đúng
+
+→ đây là critical UX/logic boundary
+
+🚀 6. FINAL STATUS
+Hạng mục	Trạng thái
+Auth flow	✅ OK
+CRM endpoint	✅ OK
+Deep link parsing	⚠️ OK nhưng cần fallback
+Session persistence	🔴 NEW REQUIREMENT
+Onboarding contract	🔴 NEED BACKEND CONFIRM
+🧭 7. FINAL ONE-LINE AGREEMENT
+
+👉 “Center phải được resolve từ URL + sessionStorage fallback, persist trong session, và onboarding flow phải phân biệt rõ existing-user-without-center vs new-user.”

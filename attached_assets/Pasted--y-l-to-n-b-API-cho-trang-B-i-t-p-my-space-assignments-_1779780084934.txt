@@ -1,0 +1,179 @@
+Đây là toàn bộ API cho trang Bài tập (/my-space/assignments) của Student/Phụ huynh:
+
+📋 API Bài tập — Student / Phụ huynh
+Base URL: https://<domain>
+Auth: Cookie session — tất cả endpoint đều yêu cầu đăng nhập
+Lưu ý: Nếu tài khoản là Phụ huynh, API tự động trả về bài tập của tất cả học viên con liên kết. Dùng studentId trong body hoặc query để chỉ định từng con khi cần.
+
+1. Lấy danh sách bài tập & bài kiểm tra
+GET /api/my-space/assignments/student?month=2025-06
+
+Hoặc lọc theo khoảng ngày tùy ý:
+
+GET /api/my-space/assignments/student?dateFrom=2025-06-01&dateTo=2025-06-30
+
+Query params:
+
+Param	Kiểu	Bắt buộc	Mô tả
+month	string	Không	Định dạng YYYY-MM. Mặc định: tháng hiện tại
+dateFrom	string	Không	Định dạng YYYY-MM-DD. Dùng kèm dateTo
+dateTo	string	Không	Định dạng YYYY-MM-DD. Dùng kèm dateFrom
+Nếu truyền dateFrom + dateTo thì sẽ ưu tiên, bỏ qua month.
+
+Response:
+
+{
+  "month": "2025-06",
+  "rows": [
+    {
+      "classSessionId": "uuid",
+      "classId": "uuid",
+      "className": "Toán nâng cao A1",
+      "classCode": "TOAN-A1",
+      "sessionDate": "2025-06-02",
+      "weekday": 1,
+      "startTime": "08:00",
+      "endTime": "10:00",
+      "sessionIndex": 3,
+      "studentId": "uuid",
+      "studentName": "Nguyen Van A",
+      "itemType": "BTVN" | "Bài kiểm tra",
+      "homeworkId": "uuid",
+      "homeworkTitle": "Bài tập chương 3",
+      "homeworkDescription": "Làm bài 1-5 trang 45",
+      "homeworkAttachments": [
+        { "name": "BaiTap_Chuong3.pdf", "url": "/uploads/xxx.pdf" }
+      ],
+      "isPersonalized": false,
+      "submissionStatus": "pending" | "submitted",
+      "submissionContent": "Nội dung bài nộp của học viên",
+      "submissionAttachments": ["/uploads/yyy.pdf"],
+      "studentSessionContentId": "uuid",
+      "score": "8.5",
+      "comment": "Làm tốt, cần cải thiện bài 3",
+      "examId": "uuid"
+    }
+  ]
+}
+
+Phân biệt loại item:
+
+itemType: "BTVN" → Bài tập về nhà. examId sẽ là null.
+itemType: "Bài kiểm tra" → Bài kiểm tra. examId là UUID dùng để tải đề thi.
+2. Nộp bài tập về nhà (BTVN)
+POST /api/my-space/assignments/student/submit
+
+⚠️ Chỉ dành cho tài khoản học viên trực tiếp, không dùng được cho Phụ huynh.
+
+Request body (JSON):
+
+{
+  "homeworkId": "uuid",
+  "submissionContent": "Bài làm của em...",
+  "submissionAttachments": ["/uploads/baitap.pdf"]
+}
+
+Field	Kiểu	Bắt buộc	Mô tả
+homeworkId	string	Có	UUID của bài tập (homeworkId từ API trên)
+submissionContent	string	Không	Nội dung văn bản bài nộp
+submissionAttachments	string[]	Không	Mảng URL file đính kèm
+Response:
+
+{ "success": true }
+
+Nếu học viên đã nộp trước đó thì API sẽ cập nhật bài nộp (upsert).
+
+3. Lấy thông tin đề thi
+GET /api/exams/:examId
+
+Path params:
+
+Param	Mô tả
+examId	UUID lấy từ field examId trong danh sách bài tập
+Response: Metadata của đề thi (tên, mã, thời gian làm bài, số lượt thi tối đa, ...)
+
+4. Lấy nội dung câu hỏi đề thi
+GET /api/exams/:examId/preview
+
+Response: Mảng các section kèm danh sách câu hỏi đầy đủ để hiển thị giao diện làm bài.
+
+[
+  {
+    "id": "uuid",
+    "title": "Phần 1: Trắc nghiệm",
+    "questions": [
+      {
+        "id": "uuid",
+        "content": "Câu 1: ...",
+        "type": "multiple_choice" | "essay" | ...,
+        "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
+        "points": 1
+      }
+    ]
+  }
+]
+
+5. Kiểm tra số lượt đã làm bài kiểm tra
+GET /api/exams/:examId/my-attempt-count?classId=<uuid>
+
+Query params:
+
+Param	Bắt buộc	Mô tả
+classId	Không	Lọc số lượt theo lớp học cụ thể
+Response:
+
+{
+  "count": 1,
+  "maxAttempts": 3
+}
+
+Dùng để kiểm tra trước khi cho học viên vào làm bài. Nếu count >= maxAttempts thì không cho làm thêm (trừ khi maxAttempts là null = không giới hạn).
+
+6. Nộp bài kiểm tra
+POST /api/exam-submissions
+
+Request body (JSON):
+
+{
+  "examId": "uuid",
+  "classId": "uuid",
+  "score": "8.5",
+  "partScores": { "Phần 1": "5", "Phần 2": "3.5" },
+  "answers": { "<questionId>": "A", "<questionId2>": "Bài làm tự luận..." },
+  "submittedAt": "2025-06-02T09:45:00Z"
+}
+
+Field	Kiểu	Bắt buộc	Mô tả
+examId	string	Có	UUID đề thi
+classId	string	Không	UUID lớp học
+score	string	Không	Điểm tự chấm (trắc nghiệm tự động)
+partScores	object	Không	Điểm từng phần
+answers	object	Không	Map questionId → câu trả lời
+submittedAt	string	Không	ISO timestamp. Mặc định: thời điểm server nhận
+Response 201: Object bài nộp đã lưu (bao gồm id của submission).
+
+Sau khi nộp, hệ thống tự động:
+
+Gửi thông báo điểm cho học viên
+Trigger AI chấm tự luận nếu đề có phần tự luận
+7. Lấy chi tiết một bài nộp kiểm tra
+GET /api/exam-submissions/:id
+
+Response: Chi tiết bài nộp (điểm, câu trả lời, nhận xét giáo viên, ...).
+
+Luồng làm bài kiểm tra trên mobile (đề xuất)
+1. GET /api/my-space/assignments/student          → lấy danh sách, lấy examId
+2. GET /api/exams/:examId                         → lấy metadata đề thi (thời gian, số lượt)
+3. GET /api/exams/:examId/my-attempt-count        → kiểm tra còn lượt không
+4. GET /api/exams/:examId/preview                 → lấy câu hỏi để hiển thị
+5. POST /api/exam-submissions                     → nộp bài
+6. GET /api/exam-submissions/:id                  → xem lại kết quả
+
+Lỗi chung
+HTTP Code	Ý nghĩa
+401	Chưa đăng nhập
+403	Không phải học viên / phụ huynh
+400	Thiếu hoặc sai dữ liệu đầu vào
+404	Không tìm thấy tài nguyên
+500	Lỗi server
+Tổng cộng 7 API phục vụ đầy đủ cho tính năng Bài tập của Student/Phụ huynh. Bạn có thể chuyển tài liệu này cho team mobile.

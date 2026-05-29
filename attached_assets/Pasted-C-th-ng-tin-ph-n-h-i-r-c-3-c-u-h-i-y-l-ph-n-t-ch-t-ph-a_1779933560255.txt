@@ -1,0 +1,53 @@
+Có đủ thông tin để phản hồi rõ cả 3 câu hỏi. Đây là phân tích từ phía CRM:
+
+Phản hồi 3 câu hỏi của team Mini App
+1. DB trực tiếp hay qua API?
+→ Qua API, không nên DB trực tiếp.
+
+Mini App server truy cập thẳng DB của CRM nghĩa là phải chia sẻ DATABASE_URL — tạo ra 2 service cùng write vào 1 DB mà không có contract rõ ràng, rất rủi ro khi schema thay đổi. CRM nên expose 1 endpoint nội bộ nhỏ:
+
+POST /api/internal/zalo-auth
+Body: { zaloAccessToken: "..." }
+Header: x-internal-secret: <shared_secret>
+Response: { userId, studentId, fullName, userType }
+
+CRM làm toàn bộ logic: verify token với graph.zalo.me → tra student_notification_channels → trả info. Mini App server chỉ nhận và ký JWT.
+
+2. JWT secret dùng chung hay riêng?
+→ Dùng chung, và nên dùng luôn JWT của CRM.
+
+CRM hiện có JWT_SECRET và toàn bộ /api/mobile/* đã verify bằng secret này. Nếu Mini App ký bằng secret riêng, JWT của Mini App sẽ không dùng được trên các endpoint CRM — tức là dù login xong, gọi /api/mobile/student/calendar vẫn bị 401.
+
+Đơn giản nhất: CRM ký JWT luôn, trả thẳng cho Mini App. Mini App server không cần có JWT logic riêng.
+
+3. Field phone hay username?
+→ CRM dùng username (passport local), không phải phone.
+
+Bảng users có username, bảng students có phone nhưng đó là 2 field khác nhau. Hiện tại /api/mobile/auth/login nhận username + password qua passport.
+
+Để Mini App login thủ công bằng số điện thoại, CRM cần thêm logic:
+
+students.phone → students.userId → users.username → authenticate
+
+Khuyến nghị kiến trúc từ phía CRM
+Team Mini App đề xuất Cách 2 (proxy), tôi đồng ý về mặt kiến trúc dài hạn — nhưng chỉ cần CRM làm thêm 2 việc nhỏ:
+
+[Mini App SDK] getAccessToken()
+      ↓
+[Mini App server] POST /api/internal/zalo-auth { zaloAccessToken }
+      ↓
+[CRM] verify graph.zalo.me → tra DB → ký JWT → trả { token }
+      ↓
+[Mini App server] relay token về Mini App
+      ↓
+[Mini App] gọi /api/mobile/* với JWT đó
+
+CRM cần làm:
+
+POST /api/internal/zalo-auth — endpoint mới (protected bằng shared secret)
+POST /api/mobile/auth/zalo — endpoint public nhận phone login thủ công
+Mini App cần làm:
+
+Gọi đúng URL CRM cho zalo-auth
+Bỏ MOCK_ZALO_CHANNELS, bỏ MOCK_USERS
+Thống nhất field: gửi phone thay vì username cho manual login

@@ -1,0 +1,132 @@
+OK — đây là 2 điểm cuối cùng và thực ra là “state persistence policy”, tức là quyết định UX-level cho toàn hệ thống. Mình chốt rõ để bạn freeze spec v1.5 FINAL (absolute production lock).
+
+🚀 SPEC v1.5 FINAL (PERSISTENCE POLICY LOCK)
+🧠 1. CASE: backend trả center = null
+❗ INPUT:
+{
+  "token": "jwt",
+  "center": null,
+  "needsOnboarding": true
+}
+✔ FINAL RULE:
+
+❌ KHÔNG xóa localStorage
+❌ KHÔNG overwrite bằng null
+✔ GIỮ nguyên candidateCenter
+
+🔥 LOGIC FINAL:
+if (res.center) {
+  setCenter(res.center);
+}
+// DO NOTHING if null
+🧠 REASON:
+
+localStorage lúc này là:
+
+fallback hint
+onboarding support context
+deep link recovery
+
+👉 nếu xóa → mất context onboarding flow
+
+🧠 2. LOGOUT BEHAVIOR (CRITICAL UX DECISION)
+❗ CONTEXT:
+
+User logout = clear auth state
+
+🔥 FINAL DECISION:
+
+✔ GIỮ center trong localStorage
+
+✔ IMPLEMENTATION:
+function logout() {
+  clearToken();
+  // DO NOT remove center
+}
+🧠 3. WHY THIS IS CORRECT (IMPORTANT)
+✔ Edu system behavior:
+1 user = 1 center (almost always)
+logout ≠ switch tenant
+switching tenant = rare admin case
+❌ nếu xóa center khi logout:
+mất auto-login UX
+mất tenant continuity
+phải rely lại deep link
+✔ nếu giữ center:
+login lại auto vào đúng trung tâm
+UX “instant resume”
+stable multi-session experience
+🧠 4. FINAL STATE POLICY (LOCKED)
+🔵 CENTER STORAGE RULE
+Event	Behavior
+URL open	may overwrite
+backend returns center	overwrite
+backend center = null	ignore
+logout	keep
+TTL expire	remove
+🧠 5. FINAL STATE MACHINE (UPDATED)
+PRE-AUTH:
+  URL → localStorage → candidateCenter
+
+AUTH:
+  send candidateCenter
+
+POST-AUTH:
+  if backend.center != null:
+      overwrite localStorage
+  else:
+      keep existing localStorage
+
+LOGOUT:
+  clear auth only
+  keep center
+🚀 6. FINAL ARCHITECTURE TRUTH
+
+👉 System behavior now becomes:
+
+“center is sticky identity context, not session data”
+
+⚠️ 7. IMPORTANT DESIGN INSIGHT
+❗ You are NOT building:
+session-based tenant
+✔ You ARE building:
+identity-bound tenant (sticky across sessions)
+🧠 8. EDGE CASES (NOW FULLY COVERED)
+Case	Result
+backend center null	keep hint
+logout/login again	auto reuse center
+new device	backend restores
+deep link override	temporary hint only
+🚀 9. FINAL VERDICT (v1.5)
+
+✔ Auth flow: stable
+✔ Tenant resolution: deterministic
+✔ Persistence policy: correct
+✔ UX continuity: optimal
+✔ Edge cases: fully handled
+✔ Production risk: minimal
+
+🔥 10. ONE-LINE FINAL SPEC
+
+👉 “Center is a sticky user context persisted across sessions and logouts, only overridden by backend authoritative value, and never cleared when backend returns null or user logs out.”
+
+🚀 KẾT LUẬN CUỐI CÙNG
+
+👉 Với v1.5:
+
+không còn ambiguity state
+không còn data loss edge-case
+UX ổn định cho multi-center SaaS
+backend giữ quyền quyết định tuyệt đối
+💡 Nếu bạn muốn bước cuối thật sự
+
+Mình có thể giúp bạn:
+
+🔥 
+vẽ complete system state diagram (PRE/AUTH/POST + logout)
+🔥 
+viết production-ready React hook useTenant()
+🔥 hoặc 
+review backend response contract để lock API 100%
+
+Chỉ cần nói: “freeze final implementation guide”

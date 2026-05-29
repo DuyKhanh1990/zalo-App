@@ -1,0 +1,82 @@
+Đây là toàn bộ API cho trang Bảng điểm (/my-space/score-sheet) của Student/Phụ huynh:
+
+📋 API Bảng điểm — Student / Phụ huynh
+Base URL: https://<domain>
+Auth: Cookie session — tất cả endpoint đều yêu cầu đăng nhập
+Lưu ý: Nếu tài khoản là Phụ huynh, API tự động trả về bảng điểm của tất cả học viên con liên kết (field studentName sẽ có giá trị để phân biệt).
+
+Chỉ có 1 API duy nhất cho Student/Phụ huynh
+1. Lấy danh sách bảng điểm
+GET /api/my-space/score-sheet
+
+Không có query param nào — API trả về toàn bộ bảng điểm đã được giáo viên publish của học viên, không phân trang, sắp xếp từ mới nhất đến cũ nhất.
+
+Response: (mảng)
+
+[
+  {
+    "id": "uuid",
+    "title": "Kiểm tra định kỳ tháng 6",
+    "classId": "uuid",
+    "scoreSheetId": "uuid",
+    "sessionId": "uuid",
+    "published": true,
+    "createdAt": "2025-06-02T10:00:00Z",
+    "updatedAt": "2025-06-02T10:30:00Z",
+    "classCode": "TOAN-A1",
+    "className": "Toán nâng cao A1",
+    "scoreSheetName": "Bảng điểm tháng 6",
+    "sessionIndex": 5,
+    "sessionDate": "2025-06-02",
+    "scores": [
+      {
+        "categoryId": "uuid",
+        "categoryName": "Điểm kiểm tra miệng",
+        "score": "8.5"
+      },
+      {
+        "categoryId": "uuid",
+        "categoryName": "Điểm bài tập về nhà",
+        "score": "9.0"
+      }
+    ],
+    "teacherComment": "Em học tốt, cần cố gắng hơn ở phần hình học",
+    "createdByName": "Nguyễn Thị B",
+    "studentName": "Nguyen Van A"
+  }
+]
+
+Giải thích các field:
+
+Field	Kiểu	Mô tả
+id	string	UUID của bảng điểm (grade book)
+title	string	Tiêu đề bảng điểm do giáo viên đặt
+classId	string	UUID lớp học
+classCode	string	Mã lớp
+className	string	Tên lớp
+scoreSheetId	string|null	UUID mẫu bảng điểm
+scoreSheetName	string|null	Tên mẫu bảng điểm
+sessionId	string|null	UUID buổi học liên quan (nếu có)
+sessionIndex	number|null	Số thứ tự buổi học
+sessionDate	string|null	Ngày buổi học (YYYY-MM-DD)
+scores	array|null	Danh sách điểm theo từng danh mục
+scores[].categoryId	string	UUID danh mục điểm
+scores[].categoryName	string	Tên danh mục (vd: "Kiểm tra miệng")
+scores[].score	string|null	Điểm số (dạng string)
+teacherComment	string|null	Nhận xét của giáo viên
+createdByName	string	Tên giáo viên tạo bảng điểm
+published	boolean	Luôn true (chỉ trả về bảng đã publish)
+createdAt	string	ISO timestamp tạo
+updatedAt	string	ISO timestamp cập nhật gần nhất
+studentName	string|null	Tên học viên — chỉ có giá trị nếu là tài khoản Phụ huynh, null nếu là học viên trực tiếp
+Lỗi
+HTTP Code	Ý nghĩa
+401	Chưa đăng nhập
+500	Lỗi server
+Nếu tài khoản không phải học viên hoặc không có học viên con liên kết, API trả về mảng rỗng [] thay vì lỗi.
+
+Lưu ý cho mobile app
+scores có thể là null nếu giáo viên chưa nhập điểm cho học viên đó trong bảng — cần xử lý null-safe khi hiển thị.
+Phụ huynh nhiều con: Response gộp bảng điểm của tất cả con vào một mảng, dùng studentName để nhóm/lọc theo từng con trên UI.
+Không có phân trang — toàn bộ lịch sử trả về một lần, nên phía mobile tự phân trang/filter nếu cần.
+Trang /my-space/score-sheet phía học viên/phụ huynh chỉ có 1 API duy nhất. Dữ liệu đủ để hiển thị toàn bộ lịch sử bảng điểm đã được giáo viên công bố.

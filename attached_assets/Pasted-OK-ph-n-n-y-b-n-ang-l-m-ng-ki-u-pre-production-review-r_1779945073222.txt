@@ -1,0 +1,93 @@
+OK, phần này bạn đang làm đúng kiểu “pre-production review” rồi — mình chốt lại để bạn gửi ngược lại team Zalo + Mini App + Backend thành 1 quyết định thống nhất, không còn tranh luận nữa.
+
+🚀 CHỐT THỐNG NHẤT CUỐI CÙNG (FINAL DECISION)
+🧠 1. Zalo SDK: getUserInfo() vs getAccessToken()
+✔ Kết luận chuẩn kiến trúc:
+
+👉 Dùng getAccessToken() (hiện tại của bạn là đúng hướng hơn)
+
+Vì sao:
+getUserInfo():
+phụ thuộc permission
+không ổn định giữa các version SDK
+có thể bị hạn chế scope
+accessToken:
+chuẩn OAuth flow của Zalo Mini App
+backend verify được qua graph.zalo.me
+an toàn hơn cho production
+✔ FINAL FLOW CHỐT:
+Mini App → getAccessToken()
+        ↓
+Backend verify token
+        ↓
+Backend gọi graph.zalo.me
+        ↓
+ra zaloUserId
+
+👉 Không đổi sang getUserInfo()
+
+🧠 2. Endpoint auth — CHỐT LẠI
+✔ GIỮ NGUYÊN endpoint hiện tại
+POST /api/mobile/auth/zalo
+❌ KHÔNG tạo endpoint mới /api/mini-app/auth
+
+👉 lý do:
+
+tránh breaking change
+CRM đang dùng ổn định
+backend hiện tại đã implement logic rồi
+✔ FINAL PAYLOAD CHỐT:
+{
+  "accessToken": "xxx",
+  "center": "crma.easyedu.vn" // optional
+}
+🧠 3. Deep link + center param
+✔ Kết luận rõ ràng:
+
+center param KHÔNG bắt buộc luôn luôn, chỉ dùng khi mở từ OA/link
+
+Flow chuẩn:
+🟢 Case 1: mở từ OA
+center = crma.easyedu.vn
+→ gửi backend
+🟢 Case 2: mở app trực tiếp
+no center
+→ backend lookup MASTER DB
+🧠 4. Logic resolve tenant (CHỐT FINAL)
+
+Backend xử lý theo thứ tự:
+
+if (center từ deep link):
+    use center
+
+else if (MASTER DB có zaloUserId):
+    use mapped center
+
+else:
+    onboarding (chọn center hoặc scan OA)
+⚠️ 5. VẤN ĐỀ DUY NHẤT CẦN TEAM ZALO CONFIRM
+
+Bạn hỏi:
+
+SDK nào ổn định hơn?
+
+✔ Trả lời chính thức:
+
+👉 Không dùng getUserInfo() làm core auth
+👉 Dùng accessToken + backend verify là chuẩn production
+
+🚀 6. FINAL SPEC CHỐT GỬI CẢ TEAM
+📱 Mini App:
+getAccessToken()
+parse center từ deep link (optional)
+call /api/mobile/auth/zalo
+🧠 Backend:
+verify accessToken
+resolve zaloUserId
+lookup MASTER DB
+route CRM theo center
+🗄 MASTER DB:
+zaloUserId → center
+🔥 7. ONE-LINE FINAL SUMMARY
+
+👉 “Giữ accessToken flow hiện tại, không đổi endpoint, chỉ bổ sung optional center từ deep link và backend sẽ resolve tenant bằng MASTER DB.”

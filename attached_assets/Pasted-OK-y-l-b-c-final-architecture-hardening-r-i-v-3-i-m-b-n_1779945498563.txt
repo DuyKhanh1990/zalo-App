@@ -1,0 +1,135 @@
+OK — đây là bước “final architecture hardening” rồi, và 3 điểm bạn raise đều đúng kiểu production edge-case, không còn là logic cơ bản nữa.
+
+Mình sẽ chốt lại thành SPEC v1.2 FINAL (FREEZE READY) để bạn gửi cho 2 team và bắt đầu code không tranh luận nữa.
+
+🚀 SPEC v1.2 (FINAL FREEZE — MINI APP AUTH + TENANT RESOLUTION)
+🧠 1. STORAGE STRATEGY (FINAL DECISION)
+❗ Quyết định cuối cùng:
+
+👉 DÙNG localStorage + TTL (7 ngày)
+❌ KHÔNG dùng sessionStorage
+
+✔ Lý do:
+Case	sessionStorage	localStorage
+Background app	OK	OK
+WebView bị kill	❌ mất data	✔ giữ được
+Reload app	❌ mất	✔ giữ
+UX stability	kém	tốt hơn
+🔥 FINAL IMPLEMENTATION:
+const TTL = 7 * 24 * 60 * 60 * 1000;
+
+function setCenter(center: string) {
+  localStorage.setItem("edu_center", JSON.stringify({
+    value: center,
+    ts: Date.now()
+  }));
+}
+
+function getCenter() {
+  const raw = localStorage.getItem("edu_center");
+  if (!raw) return null;
+
+  const { value, ts } = JSON.parse(raw);
+
+  if (Date.now() - ts > TTL) {
+    localStorage.removeItem("edu_center");
+    return null;
+  }
+
+  return value;
+}
+🧠 2. DEEP LINK OVERRIDE RULE (CRITICAL FIX)
+❗ RULE:
+
+URL luôn có quyền override storage
+
+✔ FINAL LOGIC:
+const fromUrl = new URLSearchParams(window.location.search).get("center");
+const fromStorage = getCenter();
+
+const center = fromUrl || fromStorage;
+
+// IMPORTANT: overwrite nếu URL có value mới
+if (fromUrl) {
+  setCenter(fromUrl);
+}
+🔥 RESULT:
+Case	Behavior
+User open OA A	save A
+Later open OA B	override → B
+Open app normally	use stored
+🧠 3. ONBOARDING FLOW (FINAL MVP DECISION)
+❗ CHỐT OPTION D (MVP SAFE MODE)
+✔ ONBOARDING RULE:
+if (!token && needsOnboarding) → show fallback screen
+🟢 UI SPEC (FINAL):
+Screen:
+
+“Bạn vui lòng mở ứng dụng từ link của trung tâm để tiếp tục.”
+
+❌ KHÔNG làm:
+không chọn center
+không scan QR
+không input code
+✔ Lý do:
+giảm scope dev
+tránh sai tenant binding
+phù hợp Zalo OA flow chuẩn (user phải đi từ link)
+🧠 4. FINAL TENANT RESOLUTION FLOW
+Zalo Mini App start
+    ↓
+getAccessToken()
+    ↓
+resolve center:
+    - URL (priority)
+    - localStorage (TTL 7 days)
+    ↓
+POST /api/mobile/auth/zalo
+    ↓
+Backend:
+    - verify token
+    - lookup MASTER DB
+    - resolve tenant
+    ↓
+Response:
+    - JWT
+    - needsOnboarding flag
+⚠️ 5. EDGE CASES (ĐÃ FIX TRONG SPEC v1.2)
+✔ Case 1: WebView kill
+
+→ localStorage giữ state
+
+✔ Case 2: user switch OA center
+
+→ URL override + overwrite storage
+
+✔ Case 3: user mở app trực tiếp
+
+→ fallback storage → nếu null → onboarding screen
+
+🧠 6. FINAL DECISION SUMMARY
+✔ Storage
+localStorage + TTL 7 days
+✔ Override rule
+URL always wins
+storage updated immediately
+✔ Onboarding
+MVP = “open from link only”
+🚀 7. FINAL STATUS (FREEZE READY)
+Module	Status
+Auth flow	✅ stable
+Tenant resolution	✅ stable
+Deep link handling	✅ fixed edge cases
+Storage strategy	✅ production-ready
+Onboarding UX	✅ MVP locked
+🧭 8. ONE-LINE FINAL AGREEMENT
+
+👉 “Mini App dùng localStorage + TTL để persist center, URL luôn override storage, và onboarding MVP chỉ hiển thị instruction screen nếu chưa có tenant.”
+
+🔥 KẾT LUẬN (QUAN TRỌNG)
+
+👉 Với v1.2 này:
+
+không còn missing edge-case lớn
+không còn ambiguity runtime
+đủ để build production SaaS multi-tenant Zalo Mini App

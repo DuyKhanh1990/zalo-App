@@ -1,0 +1,227 @@
+Đây là toàn bộ API cho trang Lịch học (/my-space/calendar) của Student/Phụ huynh:
+
+📋 API Lịch học — Student / Phụ huynh
+Base URL: https://<domain>
+Auth: Cookie session (hoặc token — tất cả endpoint đều yêu cầu đăng nhập)
+Lưu ý: Nếu tài khoản là Phụ huynh, API tự động trả về dữ liệu của tất cả học viên con được liên kết. Dùng query ?studentId=<id> để lọc theo từng con.
+
+1. Xác định loại tài khoản
+GET /api/my-space/user-type
+Response:
+{
+ "userType": "student" | "staff" | null
+}
+Phụ huynh sẽ trả về "student" vì hệ thống coi phụ huynh là một dạng học viên context.
+
+2. Lịch theo tháng (Calendar view)
+GET /api/my-space/calendar/student?month=2025-06
+Query params:
+Param
+Kiểu
+Bắt buộc
+Mô tả
+month
+string
+Không
+Định dạng YYYY-MM. Mặc định: tháng hiện tại
+
+Response:
+{
+ "month": "2025-06",
+ "datesWithSessions": ["2025-06-02", "2025-06-05"],
+ "sessions": [
+   {
+     "classSessionId": "uuid",
+     "studentSessionId": "uuid",
+     "sessionDate": "2025-06-02",
+     "weekday": 1,
+     "className": "Toán nâng cao A1",
+     "classCode": "TOAN-A1",
+     "startTime": "08:00",
+     "endTime": "10:00",
+     "learningFormat": "offline" | "online" | "hybrid",
+     "onlineLink": "https://...",
+     "locationId": "uuid",
+     "sessionStatus": "scheduled" | "completed" | "cancelled",
+     "attendanceStatus": "present" | "absent" | "late" | null,
+     "studentId": "uuid",
+     "studentName": "Nguyen Van A",   // chỉ có nếu là Phụ huynh
+     "studentCode": "HV001",          // chỉ có nếu là Phụ huynh
+     "isTestSession": true            // chỉ có nếu là buổi thi (test_sessions)
+   }
+ ]
+}
+
+3. Danh sách tất cả buổi học theo lớp (List view)
+GET /api/my-space/calendar/student/list
+Response: (mảng nhóm theo lớp)
+[
+ {
+   "classId": "uuid",
+   "className": "Toán nâng cao A1",
+   "classCode": "TOAN-A1",
+   "sessions": [
+     {
+       "classSessionId": "uuid",
+       "sessionIndex": 1,
+       "sessionDate": "2025-06-02",
+       "startTime": "08:00",
+       "endTime": "10:00",
+       "attendanceStatus": "present" | "absent" | "late" | null,
+       "attendanceNote": "Có phép"
+     }
+   ]
+ }
+]
+
+4. Danh sách lớp học của học viên
+GET /api/my-space/calendar/student/classes
+Response:
+[
+ {
+   "classId": "uuid",
+   "className": "Toán nâng cao A1",
+   "classCode": "TOAN-A1",
+   "totalSessions": 24
+ }
+]
+
+5. Buổi học phân trang theo lớp
+GET /api/my-space/calendar/student/class/:classId/sessions?page=1&pageSize=20
+Path params:
+Param
+Mô tả
+classId
+UUID của lớp học
+
+Query params:
+Param
+Kiểu
+Mặc định
+Mô tả
+page
+number
+1
+Trang hiện tại
+pageSize
+number
+20
+Số bản ghi/trang (tối đa 50)
+
+Response:
+{
+ "sessions": [
+   {
+     "classSessionId": "uuid",
+     "sessionIndex": 1,
+     "sessionDate": "2025-06-02",
+     "startTime": "08:00",
+     "endTime": "10:00",
+     "attendanceStatus": "present" | "absent" | "late" | null,
+     "attendanceNote": "Có phép"
+   }
+ ],
+ "total": 24,
+ "page": 1,
+ "pageSize": 20,
+ "totalPages": 2
+}
+
+6. Chi tiết buổi học
+GET /api/my-space/calendar/student/session/:classSessionId?studentId=<uuid>
+Path params:
+Param
+Mô tả
+classSessionId
+UUID của buổi học (hoặc UUID của test_session)
+
+Query params:
+Param
+Bắt buộc
+Mô tả
+studentId
+Không
+Phụ huynh dùng để chỉ định xem buổi học của con nào
+
+Response:
+{
+ "classSessionId": "uuid",
+ "studentSessionId": "uuid",
+ "sessionDate": "2025-06-02",
+ "weekday": 1,
+ "className": "Toán nâng cao A1",
+ "classCode": "TOAN-A1",
+ "startTime": "08:00",
+ "endTime": "10:00",
+ "learningFormat": "offline" | "online" | "hybrid",
+ "onlineLink": "https://...",
+ "sessionStatus": "scheduled" | "completed" | "cancelled",
+ "teacherNames": ["Nguyễn Thị B", "Trần Văn C"],
+ "attendanceStatus": "present" | "absent" | "late" | null,
+ "attendanceNote": "Có phép",
+ "reviewPublished": true,
+ "reviewData": [
+   { "label": "Thái độ học", "value": "Tốt", "comment": "..." }
+ ],
+ "generalContents": [
+   {
+     "id": "uuid",
+     "type": "Bài tập về nhà" | "Bài kiểm tra" | ...,
+     "title": "Bài tập chương 3",
+     "description": "...",
+     "resourceUrl": "https://...",
+     "availableAt": "2025-06-02T08:00:00Z",
+     "maxAttempts": 3
+   }
+ ],
+ "personalContents": [ /* cấu trúc tương tự generalContents */ ],
+ "userType": "student",
+ "studentName": "Nguyen Van A",   // chỉ có nếu là Phụ huynh
+ "studentCode": "HV001",          // chỉ có nếu là Phụ huynh
+ "enrolledCount": 15,
+ "onlineClickedAt": "2025-06-02T08:01:00Z",
+ "onlineEndedAt": "2025-06-02T10:05:00Z"
+}
+
+7. Ghi nhận học viên vào lớp online (Check-in)
+POST /api/my-space/calendar/student/session/:classSessionId/online-click?studentId=<uuid>
+Response:
+{ "onlineClickedAt": "2025-06-02T08:01:00Z" }
+
+8. Ghi nhận học viên kết thúc lớp online (Check-out)
+POST /api/my-space/calendar/student/session/:classSessionId/online-end?studentId=<uuid>
+Response:
+{ "onlineEndedAt": "2025-06-02T10:05:00Z" }
+⚠️ Phải gọi API check-in (online-click) trước, nếu chưa sẽ trả lỗi 400.
+
+9. Ghi nhận lượt làm bài kiểm tra trong buổi test
+POST /api/my-space/test-content-attempt
+Request body:
+{
+ "testSessionId": "uuid",
+ "contentId": "uuid",
+ "contentType": "exam" | "assignment",
+ "studentId": "uuid"   // tùy chọn, Phụ huynh dùng để chỉ định con
+}
+Response (còn lượt):
+{ "allowed": true, "attemptsUsed": 1, "maxAttempts": 3 }
+Response (hết lượt):
+{ "allowed": false, "attemptsUsed": 3, "maxAttempts": 3 }
+
+Lỗi chung
+HTTP Code
+Ý nghĩa
+401
+Chưa đăng nhập
+403
+Tài khoản không phải học viên / phụ huynh
+404
+Không tìm thấy buổi học
+400
+Dữ liệu không hợp lệ (vd: chưa check-in mà đã check-out)
+500
+Lỗi server
+
+
+Hệ thống đã có đầy đủ 9 API cho tính năng Lịch học của Student/Phụ huynh. Bạn có thể chuyển tài liệu này cho team mobile app sử dụng trực tiếp.
+

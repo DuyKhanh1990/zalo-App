@@ -1,0 +1,124 @@
+Bên mini app cần nhiều hơn chỉ phần xử lý URL params — họ cần một tài liệu đầy đủ để tích hợp. Đây là toàn bộ nội dung bạn nên gửi cho họ:
+
+📦 Tài liệu tích hợp — EasyEdu Mini App
+Base URL API: https://<your-domain>
+Mini App URL: https://zalo-app-4--buiminhkhang105.replit.app
+
+1. Xác thực (Authentication)
+Tất cả API đều yêu cầu đăng nhập qua cookie session. Khi người dùng đăng nhập xong, server sẽ set cookie tự động — các request tiếp theo đều gửi kèm cookie đó.
+
+Kiểm tra trạng thái đăng nhập:
+
+GET /api/auth/me
+
+Trả 200 + thông tin user nếu đã đăng nhập
+Trả 401 nếu chưa đăng nhập → redirect về màn hình login
+Kiểm tra loại tài khoản (Student hay Phụ huynh):
+
+GET /api/my-space/user-type
+→ { "userType": "student" | "staff" | null }
+
+Phụ huynh trả về "student" — hệ thống tự nhận diện và trả dữ liệu của con.
+
+2. Deep Link từ Zalo OA Notification
+Khi học viên nhấn nút "Mở ứng dụng" trong tin nhắn Zalo OA, Mini App sẽ được mở với một URL có dạng:
+
+https://zalo-app-4--buiminhkhang105.replit.app/<path>?<params>
+
+Bảng mapping URL → màn hình
+URL nhận được	Màn hình cần mở	Hành động
+/my-space/calendar?date=2026-05-26	Lịch học	Scroll đến ngày 2026-05-26, highlight ngày đó
+/my-space/calendar	Lịch học	Mở tháng hiện tại
+/my-space/assignments?month=2026-05	Bài tập	Lọc hiển thị tháng 2026-05
+/my-space/assignments	Bài tập	Mở tháng hiện tại
+/my-space/score-sheet	Bảng điểm	Mở danh sách bảng điểm
+/my-space/invoices	Hoá đơn	Mở danh sách hoá đơn
+Logic xử lý khi app khởi động
+// Pseudo-code xử lý deep link
+function onAppLaunch(url) {
+  const path = url.pathname;       // vd: "/my-space/calendar"
+  const params = url.searchParams; // vd: { date: "2026-05-26" }
+  if (path.startsWith("/my-space/calendar")) {
+    const date = params.get("date"); // "2026-05-26" hoặc null
+    navigateTo("Calendar", { initialDate: date });
+  }
+  else if (path.startsWith("/my-space/assignments")) {
+    const month = params.get("month"); // "2026-05" hoặc null
+    navigateTo("Assignments", { initialMonth: month });
+  }
+  else if (path.startsWith("/my-space/score-sheet")) {
+    navigateTo("ScoreSheet");
+  }
+  else if (path.startsWith("/my-space/invoices")) {
+    navigateTo("Invoices");
+  }
+  else {
+    navigateTo("Home");
+  }
+}
+
+3. API từng màn hình
+Màn hình Lịch học (/my-space/calendar)
+GET /api/my-space/calendar/student?month=2026-05
+
+→ Trả danh sách buổi học trong tháng + danh sách ngày có lịch
+
+Khi nhận được date=2026-05-26 từ deep link:
+
+Gọi API với month=2026-05
+Scroll calendar đến ngày 2026-05-26
+Hiển thị các buổi học của ngày đó
+Chi tiết buổi học:
+
+GET /api/my-space/calendar/student/session/:classSessionId
+
+(Xem tài liệu API Lịch học đầy đủ đã được cung cấp riêng)
+
+Màn hình Bài tập (/my-space/assignments)
+GET /api/my-space/assignments/student?month=2026-05
+
+→ Trả danh sách bài tập + bài kiểm tra trong tháng
+
+Khi nhận được month=2026-05 từ deep link:
+
+Gọi API với month=2026-05
+Hiển thị kết quả tháng đó
+Nộp bài tập:
+
+POST /api/my-space/assignments/student/submit
+
+Làm bài kiểm tra (theo thứ tự):
+
+1. GET /api/exams/:examId                        → metadata đề
+2. GET /api/exams/:examId/my-attempt-count       → kiểm tra số lượt
+3. GET /api/exams/:examId/preview                → câu hỏi
+4. POST /api/exam-submissions                    → nộp bài
+
+(Xem tài liệu API Bài tập đầy đủ đã được cung cấp riêng)
+
+Màn hình Bảng điểm (/my-space/score-sheet)
+GET /api/my-space/score-sheet
+
+→ Trả toàn bộ bảng điểm đã được giáo viên publish
+
+(Xem tài liệu API Bảng điểm đầy đủ đã được cung cấp riêng)
+
+Màn hình Hoá đơn (/my-space/invoices)
+GET /api/my-space/invoices
+
+→ Trả toàn bộ hoá đơn, bao gồm lịch đóng theo đợt
+
+(Xem tài liệu API Hoá đơn đầy đủ đã được cung cấp riêng)
+
+4. Lưu ý quan trọng
+Phụ huynh nhiều con: Tất cả API tự động trả dữ liệu của tất cả con liên kết. Dùng field studentName để nhóm/phân biệt từng con trên UI. Một số API hỗ trợ thêm ?studentId=<uuid> để lọc.
+
+Thứ tự xử lý khi app mở từ notification:
+
+1. Kiểm tra đăng nhập (GET /api/auth/me)
+2. Nếu chưa đăng nhập → màn hình login → sau login redirect về URL gốc
+3. Nếu đã đăng nhập → parse URL → điều hướng đúng màn hình
+
+Format ngày: Tất cả date trong query param đều dùng ISO YYYY-MM-DD (vd: 2026-05-26). month dùng YYYY-MM (vd: 2026-05).
+
+Tài liệu này kết hợp với 4 tài liệu API riêng đã gửi trước (Lịch học, Bài tập, Bảng điểm, Hoá đơn) là đủ để team mini app tích hợp hoàn chỉnh.
