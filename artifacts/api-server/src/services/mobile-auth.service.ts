@@ -158,10 +158,13 @@ export async function loginWithPassword(
     profile: { fullName: string; code: string; type?: string };
   };
 
-  // Derive centerId hostname from the authoritative center URL
+  // centerId is derived from the URL we actually called (user-entered center),
+  // NOT from data.center returned by the CRM. The CRM may return a different
+  // canonical URL (e.g. easyeduv2.easyedu.vn) which would route subsequent
+  // data requests to the wrong tenant.
   let centerId: string;
   try {
-    centerId = new URL(data.center).hostname;
+    centerId = new URL(centerUrl).hostname;
   } catch {
     centerId = center;
   }
@@ -175,7 +178,7 @@ export async function loginWithPassword(
   return {
     ok: true,
     token,
-    center: data.center,
+    center: centerUrl,
     profile: {
       fullName,
       code: studentCode,
