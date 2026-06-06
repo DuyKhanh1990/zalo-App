@@ -1,0 +1,32 @@
+# Dependencies — reinstalled inside the image
+node_modules
+**/node_modules
+
+# Build outputs (built fresh inside the image)
+**/dist
+**/.vite
+
+# Replit / dev tooling
+.replit
+replit.nix
+.local
+.cache
+attached_assets
+
+# Version control
+.git
+.gitignore
+
+# Env files with secrets
+.env
+**/.env
+.env.*
+**/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS artifacts
+.DS_Store
+Thumbs.db

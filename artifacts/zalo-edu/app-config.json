@@ -1,0 +1,28 @@
+{
+  "app": {
+    "title": "Easyedu",
+    "headerTitle": "Easyedu",
+    "headerColor": "#7c6fd4",
+    "textColor": "white",
+    "leftButton": "back",
+    "statusBar": "normal",
+    "actionBarHidden": false,
+    "hideAndroidBottomNavigationBar": false,
+    "hideIOSSafeAreaBottom": false
+  },
+  "pages": [
+    "pages/index"
+  ],
+  "listSDK": [],
+  "listSyncJS": [
+    "assets/index-hNqC5KIg.js"
+  ],
+  "listAsyncJS": [],
+  "listCSS": [],
+  "networkTimeout": {
+    "request": 60000,
+    "connectSocket": 60000,
+    "uploadFile": 60000,
+    "downloadFile": 60000
+  }
+}

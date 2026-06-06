@@ -1,0 +1,333 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Zalo Edu Mini App API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: schedule
+    description: Class schedule operations
+  - name: homework
+    description: Homework operations
+  - name: grades
+    description: Grade operations
+  - name: invoices
+    description: Invoice operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /schedule:
+    get:
+      operationId: listSchedule
+      tags: [schedule]
+      summary: Get weekly class schedule
+      parameters:
+        - name: week
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schedule list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleItem"
+
+  /homework:
+    get:
+      operationId: listHomework
+      tags: [homework]
+      summary: List homework assignments
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, submitted, graded, all]
+      responses:
+        "200":
+          description: Homework list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HomeworkItem"
+    post:
+      operationId: createHomework
+      tags: [homework]
+      summary: Create a homework assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HomeworkInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeworkItem"
+
+  /homework/{id}/submit:
+    patch:
+      operationId: submitHomework
+      tags: [homework]
+      summary: Mark homework as submitted
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeworkItem"
+
+  /grades:
+    get:
+      operationId: listGrades
+      tags: [grades]
+      summary: Get student grades
+      parameters:
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: semester
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Grade list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GradeItem"
+
+  /grades/summary:
+    get:
+      operationId: getGradeSummary
+      tags: [grades]
+      summary: Get grade summary stats
+      responses:
+        "200":
+          description: Grade summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeSummary"
+
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List tuition invoices
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [paid, unpaid, overdue, all]
+      responses:
+        "200":
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InvoiceItem"
+
+  /invoices/summary:
+    get:
+      operationId: getInvoiceSummary
+      tags: [invoices]
+      summary: Get invoice summary
+      responses:
+        "200":
+          description: Invoice summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    ScheduleItem:
+      type: object
+      required: [id, subject, teacher, room, dayOfWeek, startTime, endTime, date]
+      properties:
+        id:
+          type: integer
+        subject:
+          type: string
+        teacher:
+          type: string
+        room:
+          type: string
+        dayOfWeek:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        date:
+          type: string
+        color:
+          type: ["string", "null"]
+
+    HomeworkItem:
+      type: object
+      required: [id, type, title, subject, className, dueDate, startTime, endTime, status, description]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        subject:
+          type: string
+        className:
+          type: string
+        dueDate:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        status:
+          type: string
+        description:
+          type: string
+        teacher:
+          type: ["string", "null"]
+
+    HomeworkInput:
+      type: object
+      required: [title, subject, dueDate, description]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        subject:
+          type: string
+        className:
+          type: string
+        dueDate:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        description:
+          type: string
+        teacher:
+          type: string
+
+    GradeItem:
+      type: object
+      required: [id, subject, semester, midterm, final, average, letterGrade]
+      properties:
+        id:
+          type: integer
+        subject:
+          type: string
+        semester:
+          type: string
+        midterm:
+          type: number
+        final:
+          type: number
+        average:
+          type: number
+        letterGrade:
+          type: string
+        teacher:
+          type: ["string", "null"]
+
+    GradeSummary:
+      type: object
+      required: [gpa, totalSubjects, passed, failed, excellent]
+      properties:
+        gpa:
+          type: number
+        totalSubjects:
+          type: integer
+        passed:
+          type: integer
+        failed:
+          type: integer
+        excellent:
+          type: integer
+
+    InvoiceItem:
+      type: object
+      required: [id, title, amount, dueDate, status, semester, category]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        amount:
+          type: number
+        dueDate:
+          type: string
+        status:
+          type: string
+        semester:
+          type: string
+        category:
+          type: string
+        paidAt:
+          type: ["string", "null"]
+
+    InvoiceSummary:
+      type: object
+      required: [totalDue, totalPaid, overdue, upcoming]
+      properties:
+        totalDue:
+          type: number
+        totalPaid:
+          type: number
+        overdue:
+          type: number
+        upcoming:
+          type: integer

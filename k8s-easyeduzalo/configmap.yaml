@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: easyeduzalo-config
+  namespace: production
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  # Thêm các biến môi trường server-side cần thiết tại đây
+  # LƯU Ý: biến nhạy cảm (DATABASE_URL, JWT_SECRET, ...) nên dùng Secret, không dùng ConfigMap
+  # Ví dụ:
+  # CRM_API_URL: "https://zalo-app-5--kaitoenzo7588.replit.app"

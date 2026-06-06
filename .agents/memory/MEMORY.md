@@ -1,0 +1,5 @@
+- [CRM API discovery](crm-api-discovery.md) — real CRM data endpoints use `/api/my-space/...` with Accept: application/json, same pattern as Mini App API.
+- [CRM proxy architecture](crm-proxy-arch.md) — CRM token stored in our JWT payload; proxy uses crmToken from requireStudent middleware.
+- [ZMP file opening](zmp-file-opening.md) — use openOutApp (not openDocument) for all file URLs; openDocument resolves silently without opening anything (no-op, no throw), making fallback detection impossible.
+- [CRM matching question format](crm-matching-format.md) — matching questions store pairs in `options:[{id,left:{text},right:{text}}]` (not matchingData/matching/matchingPairs); normalizer must handle array input and nested text objects.
+- [CRM file upload](crm-file-upload.md) — upload endpoint is POST /api/upload (not /api/my-space/.../upload-attachment); field name must be "files" (plural); response is { files:[{name,url,size,mimetype}] }; parse files[0].url.
