@@ -1,0 +1,6 @@
+{
+  "name": "fs",
+  "version": "0.0.1-security",
+  "description": "Local stub: delegates to Node built-in fs",
+  "main": "index.js"
+}
