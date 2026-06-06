@@ -43,6 +43,7 @@ router.post("/mobile/auth/login", async (req, res): Promise<void> => {
 
 const ZaloBody = z.object({
   accessToken: z.string().min(1, "accessToken is required"),
+  center: z.string().optional(),
 });
 
 router.post("/mobile/auth/zalo", async (req, res): Promise<void> => {
@@ -54,7 +55,7 @@ router.post("/mobile/auth/zalo", async (req, res): Promise<void> => {
     return;
   }
 
-  const result = await loginWithZaloAccessToken(parsed.data.accessToken);
+  const result = await loginWithZaloAccessToken(parsed.data.accessToken, parsed.data.center);
   if (!result.ok) {
     res.status(result.status).json({ error: result.error });
     return;

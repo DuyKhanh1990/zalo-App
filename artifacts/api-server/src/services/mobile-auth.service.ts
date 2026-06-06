@@ -18,15 +18,25 @@ export type AuthResult = AuthSuccess | AuthFailure;
 
 // ─── Zalo auth ────────────────────────────────────────────────────────────────
 
-export async function loginWithZaloAccessToken(accessToken: string): Promise<AuthResult> {
-  if (!CRM_BASE_URL || !CRM_INTERNAL_SECRET) {
-    console.error("[zalo-auth] CRM_BASE_URL or CRM_INTERNAL_SECRET is not set");
+export async function loginWithZaloAccessToken(
+  accessToken: string,
+  center?: string,
+): Promise<AuthResult> {
+  // Resolve which CRM to call:
+  //   - center provided (from localStorage / deep link) → use it
+  //   - no center → fall back to CRM_BASE_URL env var (legacy single-tenant)
+  const crmUrl = center ? normalizeCenterUrl(center) : CRM_BASE_URL;
+
+  if (!crmUrl || !CRM_INTERNAL_SECRET) {
+    console.error("[zalo-auth] CRM URL or CRM_INTERNAL_SECRET is not set");
     return { ok: false, status: 403, error: "Cấu hình server chưa đầy đủ" };
   }
 
+  console.info("[zalo-auth] Forwarding to CRM:", `${crmUrl}/api/internal/zalo-auth`);
+
   let res: Response;
   try {
-    res = await fetch(`${CRM_BASE_URL}/api/internal/zalo-auth`, {
+    res = await fetch(`${crmUrl}/api/internal/zalo-auth`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -62,11 +72,20 @@ export async function loginWithZaloAccessToken(accessToken: string): Promise<Aut
   const fullName = raw["fullName"] as string ?? "";
   const studentCode = raw["studentCode"] as string | undefined;
 
-  const token = signStudentToken(studentId, CRM_BASE_URL, fullName, studentCode, crmToken);
+  // Derive centerId from the resolved CRM URL hostname
+  let centerId: string;
+  try {
+    centerId = new URL(crmUrl).hostname;
+  } catch {
+    centerId = crmUrl;
+  }
+
+  const token = signStudentToken(studentId, centerId, fullName, studentCode, crmToken);
 
   return {
     ok: true,
     token,
+    center: crmUrl,
     student: { id: studentId, fullName, studentCode: studentCode ?? "" },
   };
 }
