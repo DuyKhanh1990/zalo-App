@@ -33,8 +33,8 @@ export type AuthContextValue = {
   status: AuthStatus;
   userType: "student" | "staff" | null;
   profile: UserProfile | null;
-  loginWithZalo: (accessToken: string) => Promise<void>;
-  loginWithPassword: (phone: string, password: string) => Promise<void>;
+  loginWithZalo: (accessToken: string, center?: string) => Promise<void>;
+  loginWithPassword: (phone: string, password: string, center?: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -199,8 +199,9 @@ export function useAuthState(): AuthContextValue {
     init();
   }, []);
 
-  const loginWithZalo = useCallback(async (accessToken: string) => {
-    const candidateCenter = resolveCandidateCenter();
+  const loginWithZalo = useCallback(async (accessToken: string, center?: string) => {
+    if (center) setCenter(center);
+    const candidateCenter = center ?? resolveCandidateCenter();
     const res = await apiPost<unknown>("/api/mobile/auth/zalo", {
       accessToken,
       ...(candidateCenter ? { center: candidateCenter } : {}),
@@ -226,8 +227,9 @@ export function useAuthState(): AuthContextValue {
     }
   }, []);
 
-  const loginWithPassword = useCallback(async (phone: string, password: string) => {
-    const candidateCenter = resolveCandidateCenter();
+  const loginWithPassword = useCallback(async (phone: string, password: string, center?: string) => {
+    if (center) setCenter(center);
+    const candidateCenter = center ?? resolveCandidateCenter();
     const res = await apiPost<unknown>("/api/mobile/auth/login", {
       username: phone,
       password,

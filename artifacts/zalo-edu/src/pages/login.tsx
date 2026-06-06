@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Eye, EyeOff, User, Lock, Loader2, Link } from "lucide-react";
+import { Eye, EyeOff, User, Lock, Loader2, Link, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { isInsideZMP, getZaloAccessToken } from "@/lib/zmp-sdk";
+import { getCenter } from "@/lib/center-storage";
 
 const ACCENT = "#7c6fd4";
 
@@ -57,12 +58,45 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
   );
 }
 
+function CenterField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+        Tên trung tâm
+      </label>
+      <div className="relative">
+        <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value.trim())}
+          placeholder="Ví dụ: easyedu"
+          autoComplete="organization"
+          autoCapitalize="none"
+          className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-200 text-sm outline-none focus:border-indigo-400 transition-colors"
+          style={{ background: "#f8f8fb" }}
+        />
+      </div>
+      <p className="text-xs text-slate-400 mt-1 pl-1">
+        Tên miền trung tâm, ví dụ: <span className="font-medium">easyedu</span> → easyedu.vn
+      </p>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const [showWelcome, setShowWelcome] = useState(true);
 
   const { loginWithZalo, loginWithPassword } = useAuth();
 
   const inZMP = isInsideZMP();
+  const [center, setCenter] = useState(() => getCenter() ?? "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -73,6 +107,13 @@ export default function LoginPage() {
   // Outside ZMP: default to "manual" tab
   const [tab, setTab] = useState<"link" | "manual">(inZMP ? "link" : "manual");
 
+  function validateCommon(): boolean {
+    if (!center.trim()) { setError("Vui lòng nhập tên trung tâm"); return false; }
+    if (!username.trim()) { setError("Vui lòng nhập tên đăng nhập"); return false; }
+    if (!password.trim()) { setError("Vui lòng nhập mật khẩu"); return false; }
+    return true;
+  }
+
   /**
    * "Liên kết tài khoản" — dùng khi ở trong Zalo Mini App
    * Silently lấy Zalo accessToken, kết hợp với CRM credentials để link.
@@ -81,19 +122,18 @@ export default function LoginPage() {
   async function handleLinkAccount(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!username.trim()) { setError("Vui lòng nhập tên đăng nhập"); return; }
-    if (!password.trim()) { setError("Vui lòng nhập mật khẩu"); return; }
+    if (!validateCommon()) return;
     setLoading(true);
     try {
       if (inZMP) {
         const accessToken = await getZaloAccessToken();
         if (accessToken) {
-          await loginWithZalo(accessToken);
+          await loginWithZalo(accessToken, center.trim());
           return;
         }
       }
       // Fallback: login bằng CRM credentials
-      await loginWithPassword(username.trim(), password);
+      await loginWithPassword(username.trim(), password, center.trim());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Liên kết tài khoản thất bại");
     } finally {
@@ -104,11 +144,10 @@ export default function LoginPage() {
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!username.trim()) { setError("Vui lòng nhập tên đăng nhập"); return; }
-    if (!password.trim()) { setError("Vui lòng nhập mật khẩu"); return; }
+    if (!validateCommon()) return;
     setLoading(true);
     try {
-      await loginWithPassword(username.trim(), password);
+      await loginWithPassword(username.trim(), password, center.trim());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Đăng nhập thất bại");
     } finally {
@@ -200,6 +239,8 @@ export default function LoginPage() {
               </p>
             </div>
 
+            <CenterField value={center} onChange={setCenter} />
+
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
                 Tên đăng nhập
@@ -266,6 +307,8 @@ export default function LoginPage() {
         {/* ── Tab: Đăng nhập mật khẩu (fallback / ngoài Zalo) ── */}
         {tab === "manual" && (
           <form onSubmit={handlePasswordLogin} className="flex flex-col gap-4">
+            <CenterField value={center} onChange={setCenter} />
+
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
                 Tên đăng nhập
