@@ -76,7 +76,7 @@ function CenterField({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value.trim())}
-          placeholder="Ví dụ: easyedu"
+          placeholder="Ví dụ: abc.easyedu.vn"
           autoComplete="organization"
           autoCapitalize="none"
           className="w-full h-12 pl-10 pr-4 rounded-2xl border border-slate-200 text-sm outline-none focus:border-indigo-400 transition-colors"
@@ -84,7 +84,7 @@ function CenterField({
         />
       </div>
       <p className="text-xs text-slate-400 mt-1 pl-1">
-        Tên miền trung tâm, ví dụ: <span className="font-medium">easyedu</span> → easyedu.vn
+        Nhập đầy đủ tên miền, ví dụ: <span className="font-medium">abc.easyedu.vn</span>
       </p>
     </div>
   );
