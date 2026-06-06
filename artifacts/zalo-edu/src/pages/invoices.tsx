@@ -61,7 +61,7 @@ export default function Invoices() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["my-space-invoices"],
     queryFn: fetchInvoices,
   });
@@ -182,6 +182,16 @@ export default function Invoices() {
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-32 w-full rounded-2xl" />
             ))}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center h-52 text-center px-4">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3" style={{ background: "#fef2f2" }}>
+              <Receipt size={28} className="text-red-400" />
+            </div>
+            <p className="text-slate-600 font-semibold">Không thể tải hoá đơn</p>
+            <p className="text-red-500 text-xs mt-1 break-all">
+              {error instanceof Error ? error.message : "Lỗi không xác định"}
+            </p>
           </div>
         ) : filteredInvoices.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-52 text-center px-4">
