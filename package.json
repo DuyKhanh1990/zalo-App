@@ -18,7 +18,8 @@
   "pnpm": {
     "overrides": {
       "es5-ext": "0.10.53",
-      "fs": "link:./stubs/fs"
+      "fs": "link:./stubs/fs",
+      "simple-git": "link:./stubs/simple-git"
     }
   }
 }
